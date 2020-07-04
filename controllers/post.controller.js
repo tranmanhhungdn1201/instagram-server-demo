@@ -8,13 +8,18 @@ cloudinary.config({
 });
 module.exports = {
   // list all posts
-  index: (req, res) => {
-    Post.find({}, (err, posts) => {
-      res.json({
-        success: true,
-        posts: posts
-      });
-    }).populate("user");
+  index: async (req, res) => {
+    var userCurrent = req.currentUser;
+    var userNameFlers = userCurrent.followers;
+    userNameFlers = userNameFlers.reduce((a, b) => {
+      return [...a, b.username];
+    }, []);
+    var allPosts = await Post.find({}).populate("user");
+    var posts = allPosts.filter(post => userNameFlers.includes(post.user.username));
+    res.json({
+      success: true,
+      posts: posts
+    });
   },
   //get post by user
   getPostByUser: async (req, res) => {

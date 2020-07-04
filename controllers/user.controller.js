@@ -7,21 +7,61 @@ const signToken = require("../middleware/serverAuth").signToken;
 module.exports = {
   // list all users
   index: (req, res) => {
-    User.find({}, (err, users) => {
-      res.json(users);
+    User.find({ username: { $regex: req.query.query } }, (err, users) => {
+      res.json({
+        success: true,
+        users
+      });
     });
   },
   getInfoUserByUserName: async (req, res) => {
+    const currentUser = req.currentUser;
     const userName = req.params.userName;
     const user = await User.findOne({username: userName});
     const countPost = await Post.count({user: user});
     const info = {
       user: user,
       countPost: countPost,
+      countFollower: user.followers.length,
+      countFollowing: user.following.length,
+    }
+    const userFl = currentUser.followers.find(user => user.username === userName);
+    var following = 0;
+    if(userFl){
+      following = 1;
+      if(userFl.isAccept){
+        following = 2;
+      }
     }
     res.json({
       success: true,
-      user: info
+      info: info,
+      following: following
+    });
+  },
+  followUser: async (req, res) => {
+    const currentUsername = req.currentUser.username;
+    const userNameFl = req.params.userName;
+    await User.findOne({username: currentUsername}, function(err, user) {
+      if (!err) {
+        user.followers.push({
+          username: userNameFl,
+          isAccept: false
+        });
+        user.save();
+      }
+    });
+    await User.findOne({username: userNameFl}, function(err, user) {
+      if (!err) {
+        user.following.push({
+          username: currentUsername,
+          isAccept: false
+        });
+        user.save();
+      }
+    });
+    res.json({
+      success: true
     });
   },
   // create a new user
